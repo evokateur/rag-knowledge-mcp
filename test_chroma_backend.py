@@ -16,23 +16,24 @@ from datetime import datetime
 
 async def test_rag_backend():
     """Test the RAG backend implementation."""
-    
+
     print("=" * 60)
     print("RAG Backend Test Suite")
     print("=" * 60)
     print()
-    
+
     # Import your RAG backend
     # Replace with your actual implementation
     try:
-        from example_chroma_backend import RAGBackend
+        from chroma_backend import RAGBackend
+
         print("✓ Successfully imported RAGBackend")
     except ImportError as e:
         print(f"✗ Failed to import RAGBackend: {e}")
         print("\nMake sure you've installed dependencies:")
         print("  uv sync")
         return
-    
+
     # Initialize backend
     print("\n1. Initializing RAG backend...")
     print("-" * 60)
@@ -40,18 +41,18 @@ async def test_rag_backend():
         backend = RAGBackend(
             persist_directory="./test_chroma_db",
             collection_name="test_collection",
-            embedding_model="all-MiniLM-L6-v2"
+            embedding_model="all-MiniLM-L6-v2",
         )
         await backend.initialize()
         print("✓ Backend initialized successfully")
     except Exception as e:
         print(f"✗ Initialization failed: {e}")
         return
-    
+
     # Test 1: Add sample documents
     print("\n2. Adding sample documents...")
     print("-" * 60)
-    
+
     sample_docs = [
         {
             "content": """
@@ -64,8 +65,8 @@ async def test_rag_backend():
                 "source": "ml_basics.txt",
                 "author": "AI Researcher",
                 "tags": "machine-learning, ai, basics",
-                "created_at": datetime.now().isoformat()
-            }
+                "created_at": datetime.now().isoformat(),
+            },
         },
         {
             "content": """
@@ -78,8 +79,8 @@ async def test_rag_backend():
                 "source": "python_intro.txt",
                 "author": "Developer",
                 "tags": "python, programming, development",
-                "created_at": datetime.now().isoformat()
-            }
+                "created_at": datetime.now().isoformat(),
+            },
         },
         {
             "content": """
@@ -92,11 +93,11 @@ async def test_rag_backend():
                 "source": "vector_db_guide.txt",
                 "author": "Database Expert",
                 "tags": "vector-database, rag, embeddings",
-                "created_at": datetime.now().isoformat()
-            }
-        }
+                "created_at": datetime.now().isoformat(),
+            },
+        },
     ]
-    
+
     doc_ids = []
     for i, doc in enumerate(sample_docs, 1):
         try:
@@ -104,13 +105,15 @@ async def test_rag_backend():
                 content=doc["content"],
                 metadata=doc["metadata"],
                 chunk_size=50,  # Small chunks for testing
-                chunk_overlap=10
+                chunk_overlap=10,
             )
             doc_ids.append(result["document_id"])
-            print(f"✓ Document {i} added: {result['document_id']} ({result['chunks_created']} chunks)")
+            print(
+                f"✓ Document {i} added: {result['document_id']} ({result['chunks_created']} chunks)"
+            )
         except Exception as e:
             print(f"✗ Failed to add document {i}: {e}")
-    
+
     # Test 2: Get statistics
     print("\n3. Checking knowledge base statistics...")
     print("-" * 60)
@@ -123,50 +126,48 @@ async def test_rag_backend():
         print(f"  - Vector dimension: {stats['vector_dimension']}")
     except Exception as e:
         print(f"✗ Failed to get statistics: {e}")
-    
+
     # Test 3: Semantic search
     print("\n4. Testing semantic search...")
     print("-" * 60)
-    
+
     test_queries = [
         ("What is machine learning?", 3),
         ("Tell me about Python programming", 2),
-        ("How do vector databases work?", 2)
+        ("How do vector databases work?", 2),
     ]
-    
+
     for query, top_k in test_queries:
         print(f"\nQuery: '{query}' (top_k={top_k})")
         try:
             results = await backend.search(
-                query=query,
-                top_k=top_k,
-                score_threshold=0.3
+                query=query, top_k=top_k, score_threshold=0.3
             )
-            
+
             if results:
                 print(f"✓ Found {len(results)} results:")
                 for i, result in enumerate(results, 1):
                     print(f"\n  Result {i} (score: {result['score']:.3f}):")
-                    content_preview = result['content'][:100].replace('\n', ' ')
+                    content_preview = result["content"][:100].replace("\n", " ")
                     print(f"    Content: {content_preview}...")
                     print(f"    Source: {result['metadata'].get('source', 'Unknown')}")
             else:
                 print("  ⚠ No results found above threshold")
-                
+
         except Exception as e:
             print(f"✗ Search failed: {e}")
-    
+
     # Test 4: List documents
     print("\n5. Listing documents...")
     print("-" * 60)
     try:
         doc_list = await backend.list_documents(limit=10, offset=0)
         print(f"✓ Found {doc_list['total']} documents:")
-        for doc in doc_list['documents']:
+        for doc in doc_list["documents"]:
             print(f"  - {doc['id']} ({doc['source']})")
     except Exception as e:
         print(f"✗ Failed to list documents: {e}")
-    
+
     # Test 5: Get specific document
     print("\n6. Retrieving specific document...")
     print("-" * 60)
@@ -183,7 +184,7 @@ async def test_rag_backend():
                 print("✗ Document not found")
         except Exception as e:
             print(f"✗ Failed to get document: {e}")
-    
+
     # Test 6: Delete document
     print("\n7. Testing document deletion...")
     print("-" * 60)
@@ -192,7 +193,7 @@ async def test_rag_backend():
             deleted = await backend.delete_document(doc_ids[0])
             if deleted:
                 print(f"✓ Document {doc_ids[0]} deleted successfully")
-                
+
                 # Verify deletion
                 doc = await backend.get_document(doc_ids[0])
                 if doc is None:
@@ -203,7 +204,7 @@ async def test_rag_backend():
                 print("✗ Document not found for deletion")
         except Exception as e:
             print(f"✗ Failed to delete document: {e}")
-    
+
     # Cleanup
     print("\n8. Cleaning up...")
     print("-" * 60)
@@ -212,7 +213,7 @@ async def test_rag_backend():
         print("✓ Backend closed successfully")
     except Exception as e:
         print(f"✗ Cleanup failed: {e}")
-    
+
     print("\n" + "=" * 60)
     print("Test suite completed!")
     print("=" * 60)
