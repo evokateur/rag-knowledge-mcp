@@ -1711,6 +1711,7 @@ dependencies = [
     { name = "chromadb" },
     { name = "mcp" },
     { name = "numpy" },
+    { name = "python-dotenv" },
     { name = "sentence-transformers" },
 ]
 
@@ -1719,6 +1720,7 @@ requires-dist = [
     { name = "chromadb", specifier = ">=0.4.0" },
     { name = "mcp", specifier = ">=1.1.0" },
     { name = "numpy", specifier = "<2.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "sentence-transformers", specifier = ">=2.3.0" },
 ]
 

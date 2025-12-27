@@ -11,7 +11,15 @@ Usage:
 
 import asyncio
 import json
+import os
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+env_file = Path(__file__).parent / ".env"
+if env_file.exists():
+    load_dotenv(env_file, override=True)
 
 
 async def test_rag_backend():
@@ -39,9 +47,9 @@ async def test_rag_backend():
     print("-" * 60)
     try:
         backend = RAGBackend(
-            persist_directory="./test_chroma_db",
-            collection_name="test_collection",
-            embedding_model="all-MiniLM-L6-v2",
+            persist_directory=os.getenv("TEST_RAG_PERSIST_DIR", "./test_chroma_db"),
+            collection_name=os.getenv("TEST_RAG_COLLECTION", "knowledge_base"),
+            embedding_model=os.getenv("TEST_RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
         )
         await backend.initialize()
         print("✓ Backend initialized successfully")
