@@ -2,4 +2,4 @@
 .venv
 .DS_Store
 __pycache__
-*_chroma_db
+*_db
