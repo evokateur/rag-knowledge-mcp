@@ -66,9 +66,9 @@ async def app_lifespan():
     - RAG_COLLECTION: Collection name (default: knowledge_base)
     - RAG_EMBEDDING_MODEL: Sentence Transformers model (default: all-MiniLM-L6-v2)
     """
-    from chroma_backend import RAGBackend
+    from chroma_backend import RagBackend
 
-    rag_backend = RAGBackend(
+    rag_backend = RagBackend(
         persist_directory=os.getenv("RAG_PERSIST_DIR", "./chroma_db"),
         collection_name=os.getenv("RAG_COLLECTION", "knowledge_base"),
         embedding_model=os.getenv("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
@@ -358,7 +358,7 @@ async def search_knowledge(params: SearchKnowledgeInput, ctx: Context) -> str:
         str: Search results in requested format (Markdown or JSON)
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info(
             f"Searching knowledge base: '{params.query}' (top_k={params.top_k})"
@@ -427,7 +427,7 @@ async def add_document(params: AddDocumentInput, ctx: Context) -> str:
         str: JSON response with document ID and ingestion statistics
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info(f"Adding document: {params.source}")
         ctx.report_progress(0.1, "Preparing document for ingestion...")
@@ -495,7 +495,7 @@ async def delete_document(params: DeleteDocumentInput, ctx: Context) -> str:
         str: JSON response indicating success or failure
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info(f"Deleting document: {params.document_id}")
 
@@ -553,7 +553,7 @@ async def list_documents(params: ListDocumentsInput, ctx: Context) -> str:
         str: Document list in requested format with pagination metadata
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info(
             f"Listing documents (limit={params.limit}, offset={params.offset})"
@@ -605,7 +605,7 @@ async def get_document(params: GetDocumentInput, ctx: Context) -> str:
         str: Document content in requested format, or error if not found
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info(f"Retrieving document: {params.document_id}")
 
@@ -656,7 +656,7 @@ async def get_stats(ctx: Context) -> str:
         str: JSON-formatted statistics
     """
     try:
-        rag_backend: RAGBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
 
         ctx.log_info("Retrieving knowledge base statistics")
 

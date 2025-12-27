@@ -10,7 +10,6 @@ Usage:
 """
 
 import asyncio
-import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -33,11 +32,11 @@ async def test_rag_backend():
     # Import your RAG backend
     # Replace with your actual implementation
     try:
-        from chroma_backend import RAGBackend
+        from chroma_backend import RagBackend
 
-        print("✓ Successfully imported RAGBackend")
+        print("✓ Successfully imported RagBackend")
     except ImportError as e:
-        print(f"✗ Failed to import RAGBackend: {e}")
+        print(f"✗ Failed to import RagBackend: {e}")
         print("\nMake sure you've installed dependencies:")
         print("  uv sync")
         return
@@ -46,7 +45,7 @@ async def test_rag_backend():
     print("\n1. Initializing RAG backend...")
     print("-" * 60)
     try:
-        backend = RAGBackend(
+        backend = RagBackend(
             persist_directory=os.getenv("TEST_RAG_PERSIST_DIR", "./test_chroma_db"),
             collection_name=os.getenv("TEST_RAG_COLLECTION", "knowledge_base"),
             embedding_model=os.getenv("TEST_RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),

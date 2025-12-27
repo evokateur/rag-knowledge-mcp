@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-class RAGBackend:
+class RagBackend:
     """
     Template for RAG backend implementation.
 
@@ -164,9 +164,7 @@ class RAGBackend:
         # 3. Return success/failure
         return True
 
-    async def list_documents(
-        self, limit: int = 20, offset: int = 0
-    ) -> Dict[str, Any]:
+    async def list_documents(self, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """
         List documents in the knowledge base.
 
