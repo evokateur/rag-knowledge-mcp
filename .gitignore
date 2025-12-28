@@ -5,7 +5,7 @@ __pycache__
 *_db
 
 # Knowledge base directory (gitignored to allow symlink to external location)
-knowledge-base/
+knowledge-base
 
 # Test knowledge base directory
-test-knowledge-base/
+test-knowledge-base
