@@ -161,7 +161,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 {
   "mcpServers": {
     "rag-knowledge": {
-      "command": "uv",
+      "command": "/absolute/path/to/uv",
       "args": [
         "run",
         "--directory",
@@ -176,6 +176,8 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   }
 }
 ```
+
+**Note:** Use the absolute path to `uv` (find it with `which uv`), typically `~/.local/bin/uv` or `~/.cargo/bin/uv`. Claude Desktop has a limited PATH and may not find `uv` otherwise.
 
 ### Configure Claude Code
 
@@ -185,7 +187,7 @@ Create or update `~/.config/claude-code/mcp_config.json`:
 {
   "mcpServers": {
     "rag-knowledge": {
-      "command": "uv",
+      "command": "/absolute/path/to/uv",
       "args": [
         "run",
         "--directory",
@@ -200,6 +202,8 @@ Create or update `~/.config/claude-code/mcp_config.json`:
   }
 }
 ```
+
+**Note:** Use the absolute path to `uv` (find it with `which uv`).
 
 ### Environment Variables (Optional)
 
@@ -225,6 +229,7 @@ uv run python ingest_knowledge.py
 ```
 
 The ingestion script:
+
 - Reads all `.md` files from `RAG_KNOWLEDGE_DIR` (default: `./knowledge-base/`)
 - Chunks documents using RecursiveCharacterTextSplitter
 - Generates embeddings in batches for efficiency
@@ -452,6 +457,7 @@ class PineconeBackend(AbstractRagBackend):
 ```
 
 Then set in `.env`:
+
 ```bash
 RAG_BACKEND_CLASS=pinecone_backend.PineconeBackend
 PINECONE_API_KEY=your-api-key
@@ -490,6 +496,7 @@ pytest --cov=. --cov-report=html
 ```
 
 **Test Suite:**
+
 - **test_abc.py** - Abstract base class validation
 - **test_rag_backend.py** - Backend implementation (ChromaDB, chunking, embeddings)
 - **test_mcp_server.py** - MCP tool integration tests (fast)
@@ -673,6 +680,7 @@ async def search(self, query, top_k=5, hybrid_alpha=0.5):
 This server is designed to be customized for your specific needs. Common enhancements:
 
 **Backend Extensions:**
+
 - [ ] Alternative vector databases (Pinecone, Qdrant, FAISS)
 - [ ] Different embedding models (OpenAI, Cohere, custom fine-tuned)
 - [ ] Hybrid search (vector + keyword/BM25)
@@ -680,6 +688,7 @@ This server is designed to be customized for your specific needs. Common enhance
 - [ ] Metadata filtering and faceted search
 
 **Ingestion Pipeline:**
+
 - [ ] Document preprocessing (PDF, DOCX, HTML parsing)
 - [ ] Metadata extraction (title, author, date)
 - [ ] Multi-modal support (images, tables)
@@ -687,6 +696,7 @@ This server is designed to be customized for your specific needs. Common enhance
 - [ ] Background ingestion jobs
 
 **Query Enhancement:**
+
 - [ ] Query expansion and refinement
 - [ ] Caching layer for frequent queries
 - [ ] Monitoring and analytics
