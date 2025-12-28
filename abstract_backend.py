@@ -231,22 +231,21 @@ class AbstractRagBackend(ABC):
     async def ingest_directory(
         self,
         directory: str,
-        rebuild: bool = False,
-        chunk_size: int = 500,
-        chunk_overlap: int = 100,
+        chunk_size: int = None,
+        chunk_overlap: int = None,
     ) -> Dict[str, Any]:
         """
         Ingest all documents from a directory into the knowledge base.
 
         This is a bulk operation that efficiently processes multiple documents.
+        Always rebuilds the collection from scratch to avoid duplicates.
         The default implementation looks for .md files, but you can adapt to
         your needs (PDF, txt, etc.).
 
         Args:
             directory: Path to directory containing documents
-            rebuild: If True, delete existing collection first
-            chunk_size: Size of chunks (implementation-specific units)
-            chunk_overlap: Overlap between chunks
+            chunk_size: Size of chunks (implementation-specific, defaults to backend config)
+            chunk_overlap: Overlap between chunks (implementation-specific, defaults to backend config)
 
         Returns:
             Statistics about the ingestion

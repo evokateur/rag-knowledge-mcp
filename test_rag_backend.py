@@ -108,9 +108,7 @@ async def backend_with_data(backend, test_knowledge_base):
     Uses ingest_directory() to load all test markdown files.
     Tests that use this fixture assume ingestion works correctly.
     """
-    await backend.ingest_directory(
-        directory=str(test_knowledge_base), rebuild=True
-    )
+    await backend.ingest_directory(directory=str(test_knowledge_base))
     return backend
 
 
@@ -146,9 +144,7 @@ async def test_config_loaded(backend):
 @pytest.mark.asyncio
 async def test_ingest_directory(backend, test_knowledge_base):
     """Test bulk directory ingestion workflow."""
-    stats = await backend.ingest_directory(
-        directory=str(test_knowledge_base), rebuild=True
-    )
+    stats = await backend.ingest_directory(directory=str(test_knowledge_base))
 
     assert stats["documents_processed"] == 3
     assert stats["total_chunks"] > 0
@@ -160,16 +156,16 @@ async def test_ingest_directory(backend, test_knowledge_base):
 
 
 @pytest.mark.asyncio
-async def test_ingest_directory_rebuild(backend, test_knowledge_base):
-    """Test that rebuild flag clears existing data."""
+async def test_ingest_directory_always_rebuilds(backend, test_knowledge_base):
+    """Test that ingestion always rebuilds (no duplicates on re-run)."""
     # First ingestion
-    await backend.ingest_directory(directory=str(test_knowledge_base), rebuild=True)
+    await backend.ingest_directory(directory=str(test_knowledge_base))
 
     stats1 = await backend.get_stats()
     doc_count1 = stats1["total_documents"]
 
-    # Second ingestion with rebuild
-    await backend.ingest_directory(directory=str(test_knowledge_base), rebuild=True)
+    # Second ingestion (should rebuild, not add duplicates)
+    await backend.ingest_directory(directory=str(test_knowledge_base))
 
     stats2 = await backend.get_stats()
     doc_count2 = stats2["total_documents"]

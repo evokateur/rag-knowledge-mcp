@@ -64,7 +64,6 @@ Document ingestion is handled separately via `ingest_knowledge.py` script.
 │  - Reads markdown files from knowledge-base/                 │
 │  - Calls backend.ingest_directory()                          │
 │  - Batch embedding generation for efficiency                 │
-│  - --rebuild flag to recreate collection                     │
 └────────────────────────┬────────────────────────────────────┘
                          │ write access
                          ▼
@@ -223,9 +222,6 @@ Before using the MCP server, populate your knowledge base:
 # Then run ingestion script
 
 uv run python ingest_knowledge.py
-
-# Or rebuild from scratch
-uv run python ingest_knowledge.py --rebuild
 ```
 
 The ingestion script:
@@ -594,8 +590,8 @@ uv run python -c "from mcp.server.fastmcp import FastMCP"
 
 ### Memory issues with large documents
 
-1. Adjust chunking in `.env`: Set smaller `RAG_CHUNK_SIZE` (e.g., 300)
-2. Use `--rebuild` flag with ingestion to recreate with new settings
+1. Adjust chunking parameters: Set smaller `chunk_size` (e.g., 300) in backend config
+2. Re-run ingestion after changing settings
 3. Process documents incrementally (add a few at a time)
 4. Consider document filtering/sampling before ingestion
 

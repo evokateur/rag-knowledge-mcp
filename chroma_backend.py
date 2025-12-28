@@ -422,7 +422,6 @@ class RagBackend(AbstractRagBackend):
     async def ingest_directory(
         self,
         directory: str,
-        rebuild: bool = False,
         chunk_size: int = None,
         chunk_overlap: int = None,
     ) -> Dict[str, Any]:
@@ -430,10 +429,10 @@ class RagBackend(AbstractRagBackend):
         Ingest all markdown files from a directory into the knowledge base.
 
         This is a bulk operation that efficiently processes multiple documents.
+        Always rebuilds the collection from scratch to avoid duplicates.
 
         Args:
             directory: Path to directory containing markdown files
-            rebuild: If True, delete existing collection first
             chunk_size: Size of chunks in characters (defaults to config.chunk_size)
             chunk_overlap: Overlap between chunks in characters (defaults to config.chunk_overlap)
 
@@ -450,26 +449,23 @@ class RagBackend(AbstractRagBackend):
             if not directory_path.exists():
                 raise FileNotFoundError(f"Directory not found: {directory}")
 
-            # Handle rebuild
-            if rebuild:
-                try:
-                    self.client.delete_collection(name=self.config.collection)
-                    logger.info(
-                        f"Deleted existing collection: {self.config.collection}"
-                    )
+            # Always rebuild: delete existing collection and recreate
+            try:
+                self.client.delete_collection(name=self.config.collection)
+                logger.info(f"Deleted existing collection: {self.config.collection}")
+            except Exception:
+                logger.debug(
+                    f"No existing collection to delete: {self.config.collection}"
+                )
 
-                    # Recreate collection
-                    self.collection = self.client.get_or_create_collection(
-                        name=self.config.collection,
-                        metadata={
-                            "hnsw:space": "cosine",
-                            "description": "RAG knowledge base for MCP server",
-                        },
-                    )
-                except Exception:
-                    logger.debug(
-                        f"No existing collection to delete: {self.config.collection}"
-                    )
+            # Recreate collection
+            self.collection = self.client.get_or_create_collection(
+                name=self.config.collection,
+                metadata={
+                    "hnsw:space": "cosine",
+                    "description": "RAG knowledge base for MCP server",
+                },
+            )
 
             # Find all markdown files
             markdown_files = list(directory_path.rglob("*.md"))

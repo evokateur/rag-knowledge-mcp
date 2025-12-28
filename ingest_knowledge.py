@@ -5,14 +5,13 @@ Knowledge Base Ingestion Script
 Ingests documents from the knowledge base directory using the RagBackend.
 This ensures consistency between ingestion and querying.
 
-Usage:
-    python ingest_knowledge.py [--rebuild]
+Always rebuilds the collection from scratch to avoid duplicates and ensure
+the vector database matches the current state of the knowledge base.
 
-Options:
-    --rebuild    Delete existing collection and rebuild from scratch
+Usage:
+    python ingest_knowledge.py
 """
 
-import argparse
 import asyncio
 import logging
 import sys
@@ -29,19 +28,10 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main ingestion workflow."""
-    parser = argparse.ArgumentParser(description="Ingest knowledge base into ChromaDB")
-    parser.add_argument(
-        "--rebuild",
-        action="store_true",
-        help="Delete existing collection and rebuild from scratch",
-    )
-    args = parser.parse_args()
-
     logger.info("=" * 60)
     logger.info("Knowledge Base Ingestion")
     logger.info("=" * 60)
     logger.info(f"Knowledge directory: {RAG_KNOWLEDGE_DIR}")
-    logger.info(f"Rebuild: {args.rebuild}")
     logger.info("=" * 60)
 
     # Import and initialize backend using factory
@@ -52,11 +42,8 @@ async def main():
     try:
         await backend.initialize()
 
-        # Ingest directory using backend
-        stats = await backend.ingest_directory(
-            directory=RAG_KNOWLEDGE_DIR,
-            rebuild=args.rebuild,
-        )
+        # Ingest directory using backend (always rebuilds)
+        stats = await backend.ingest_directory(directory=RAG_KNOWLEDGE_DIR)
 
         logger.info("=" * 60)
         logger.info("Ingestion Statistics:")
