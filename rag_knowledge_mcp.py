@@ -13,22 +13,13 @@ allowing you to integrate your preferred tools and models.
 
 import json
 import logging
-import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, TypedDict
 
-from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-
-# Load environment variables from .env file if it exists
-env_file = Path(__file__).parent / ".env"
-if env_file.exists():
-    load_dotenv(env_file, override=True)
-    logging.info(f"Loaded environment variables from {env_file}")
 
 # Configure logging to stderr (not stdout for stdio transport)
 logging.basicConfig(
@@ -61,18 +52,12 @@ async def app_lifespan():
     Manage resources that persist for the server's lifetime.
 
     Initializes the RAG backend on startup and cleans up on shutdown.
-    Configuration can be provided via environment variables:
-    - RAG_PERSIST_DIR: Directory for vector database (default: ./chroma_db)
-    - RAG_COLLECTION: Collection name (default: knowledge_base)
-    - RAG_EMBEDDING_MODEL: Sentence Transformers model (default: all-MiniLM-L6-v2)
+    Configuration is loaded from config.py (which reads from .env if present).
+    The backend implementation is determined by RAG_BACKEND_CLASS.
     """
-    from chroma_backend import RagBackend
+    from config import create_rag_backend
 
-    rag_backend = RagBackend(
-        persist_directory=os.getenv("RAG_PERSIST_DIR", "./chroma_db"),
-        collection_name=os.getenv("RAG_COLLECTION", "knowledge_base"),
-        embedding_model=os.getenv("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
-    )
+    rag_backend = create_rag_backend()
     await rag_backend.initialize()
 
     yield {"rag_backend": rag_backend}
@@ -120,59 +105,6 @@ class SearchKnowledgeInput(BaseModel):
     response_format: ResponseFormat = Field(
         default=ResponseFormat.MARKDOWN,
         description="Output format: 'markdown' for human-readable or 'json' for machine-readable",
-    )
-
-
-class AddDocumentInput(BaseModel):
-    """Input parameters for adding a document to the knowledge base."""
-
-    model_config = ConfigDict(
-        str_strip_whitespace=True, validate_assignment=True, extra="forbid"
-    )
-
-    content: str = Field(
-        ..., description="Full text content of the document to add", min_length=1
-    )
-    source: str = Field(
-        ...,
-        description="Source identifier (e.g., filename, URL, or document title)",
-        min_length=1,
-        max_length=500,
-    )
-    author: Optional[str] = Field(
-        default=None, description="Document author name", max_length=200
-    )
-    tags: Optional[List[str]] = Field(
-        default_factory=list,
-        description="List of tags or categories for the document",
-        max_items=20,
-    )
-    chunk_size: int = Field(
-        default=512,
-        description="Size of text chunks for embedding (128-2048 tokens)",
-        ge=128,
-        le=2048,
-    )
-    chunk_overlap: int = Field(
-        default=50,
-        description="Overlap between consecutive chunks (0-512 tokens)",
-        ge=0,
-        le=512,
-    )
-
-
-class DeleteDocumentInput(BaseModel):
-    """Input parameters for deleting a document."""
-
-    model_config = ConfigDict(
-        str_strip_whitespace=True, validate_assignment=True, extra="forbid"
-    )
-
-    document_id: str = Field(
-        ...,
-        description="Unique identifier of the document to delete",
-        min_length=1,
-        max_length=200,
     )
 
 
@@ -395,135 +327,6 @@ async def search_knowledge(params: SearchKnowledgeInput, ctx: Context) -> str:
         error_msg = f"Error searching knowledge base: {str(e)}"
         ctx.log_error(error_msg)
         return f"Error: {error_msg}\n\nPlease check your query and try again."
-
-
-@mcp.tool(
-    name="rag_add_document",
-    annotations={
-        "title": "Add Document to Knowledge Base",
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-        "openWorldHint": False,
-    },
-)
-async def add_document(params: AddDocumentInput, ctx: Context) -> str:
-    """
-    Add a new document to the knowledge base.
-
-    Processes the document by chunking the text, generating embeddings,
-    and storing in the vector database for future semantic search.
-
-    Args:
-        params (AddDocumentInput): Document parameters including:
-            - content (str): Full document text
-            - source (str): Source identifier (filename, URL, etc.)
-            - author (Optional[str]): Document author
-            - tags (Optional[List[str]]): Document tags/categories
-            - chunk_size (int): Size of chunks for embedding (default: 512)
-            - chunk_overlap (int): Overlap between chunks (default: 50)
-
-    Returns:
-        str: JSON response with document ID and ingestion statistics
-    """
-    try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
-
-        ctx.log_info(f"Adding document: {params.source}")
-        ctx.report_progress(0.1, "Preparing document for ingestion...")
-
-        # Prepare metadata
-        metadata = {"source": params.source, "created_at": datetime.now().isoformat()}
-        if params.author:
-            metadata["author"] = params.author
-        if params.tags:
-            metadata["tags"] = params.tags
-
-        ctx.report_progress(0.3, "Chunking and embedding document...")
-
-        # Add document to knowledge base
-        result = await rag_backend.add_document(
-            content=params.content,
-            metadata=metadata,
-            chunk_size=params.chunk_size,
-            chunk_overlap=params.chunk_overlap,
-        )
-
-        ctx.report_progress(1.0, "Document successfully added")
-        ctx.log_info(
-            f"Document added: {result['document_id']} ({result['chunks_created']} chunks)"
-        )
-
-        return json.dumps(
-            {
-                "success": True,
-                "document_id": result["document_id"],
-                "chunks_created": result["chunks_created"],
-                "metadata": result["metadata"],
-            },
-            indent=2,
-        )
-
-    except Exception as e:
-        error_msg = f"Error adding document: {str(e)}"
-        ctx.log_error(error_msg)
-        return json.dumps({"success": False, "error": error_msg}, indent=2)
-
-
-@mcp.tool(
-    name="rag_delete_document",
-    annotations={
-        "title": "Delete Document from Knowledge Base",
-        "readOnlyHint": False,
-        "destructiveHint": True,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
-)
-async def delete_document(params: DeleteDocumentInput, ctx: Context) -> str:
-    """
-    Delete a document from the knowledge base.
-
-    Removes the document and all its associated chunks from the vector database.
-    This operation is destructive and cannot be undone.
-
-    Args:
-        params (DeleteDocumentInput): Deletion parameters including:
-            - document_id (str): Unique identifier of document to delete
-
-    Returns:
-        str: JSON response indicating success or failure
-    """
-    try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
-
-        ctx.log_info(f"Deleting document: {params.document_id}")
-
-        # Delete document
-        deleted = await rag_backend.delete_document(params.document_id)
-
-        if deleted:
-            ctx.log_info(f"Document deleted: {params.document_id}")
-            return json.dumps(
-                {
-                    "success": True,
-                    "message": f"Document '{params.document_id}' successfully deleted",
-                },
-                indent=2,
-            )
-        else:
-            return json.dumps(
-                {
-                    "success": False,
-                    "error": f"Document '{params.document_id}' not found",
-                },
-                indent=2,
-            )
-
-    except Exception as e:
-        error_msg = f"Error deleting document: {str(e)}"
-        ctx.log_error(error_msg)
-        return json.dumps({"success": False, "error": error_msg}, indent=2)
 
 
 @mcp.tool(

@@ -1,18 +1,16 @@
 """
-Example RAG Backend Implementation using Chroma + Sentence Transformers
+RAG Backend Implementation using Chroma + Sentence Transformers
 
-This is a complete, working implementation that you can use as-is or
-adapt for your specific needs. It demonstrates:
+This backend provides complete RAG functionality with ChromaDB vector database.
+Read methods are exposed via MCP, write methods are used by ingest_knowledge.py.
 
+Features:
 - ChromaDB for vector storage
 - Sentence Transformers for embeddings
-- Simple word-based chunking
-- Metadata filtering
+- Semantic search with metadata filtering
+- Document reconstruction from chunks
+- Bulk directory ingestion with batch embeddings
 - Proper async patterns
-
-To use this implementation:
-1. uv sync
-2. Replace the RagBackend class in rag_knowledge_mcp.py with this one
 """
 
 import chromadb
@@ -20,50 +18,69 @@ from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
 import logging
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pydantic import Field
+
+from config import BackendConfig
+from abstract_backend import AbstractRagBackend
 
 logger = logging.getLogger(__name__)
 
 
-class RagBackend:
+class ChromaConfig(BackendConfig):
+    """
+    ChromaDB-specific configuration extending base BackendConfig.
+
+    Adds chunking strategy parameters specific to the Chroma implementation.
+    """
+
+    chunk_size: int = Field(
+        default=500, description="Size of text chunks in characters"
+    )
+
+    chunk_overlap: int = Field(
+        default=100, description="Overlap between chunks in characters"
+    )
+
+    chunk_separators: list[str] = Field(
+        default=["\n\n", "\n", ". ", " ", ""],
+        description="Separators for recursive text splitting (paragraph -> sentence -> word)",
+    )
+
+
+class RagBackend(AbstractRagBackend):
     """
     Chroma + Sentence Transformers implementation of RAG backend.
+
+    Configuration is loaded from environment variables into ChromaConfig.
     """
 
-    def __init__(
-        self,
-        persist_directory: str = "./chroma_db",
-        collection_name: str = "knowledge_base",
-        embedding_model: str = "all-MiniLM-L6-v2",
-    ):
-        """
-        Initialize RAG backend configuration.
-
-        Args:
-            persist_directory: Path to store Chroma database
-            collection_name: Name of the Chroma collection
-            embedding_model: Sentence Transformers model name
-        """
-        self.persist_directory = persist_directory
-        self.collection_name = collection_name
-        self.embedding_model_name = embedding_model
-
+    def __init__(self):
+        """Initialize RAG backend."""
+        super().__init__()
         self.client = None
         self.collection = None
         self.model = None
 
-    async def initialize(self):
+    def _create_config(self) -> ChromaConfig:
+        """Create ChromaDB-specific configuration."""
+        return ChromaConfig()
+
+    async def _initialize_backend(self):
         """Initialize Chroma client and load embedding model."""
         try:
             # Initialize Chroma with persistence
             self.client = chromadb.PersistentClient(
-                path=self.persist_directory,
+                path=self.config.persist_dir,
                 settings=Settings(anonymized_telemetry=False, allow_reset=True),
             )
 
             # Get or create collection
             self.collection = self.client.get_or_create_collection(
-                name=self.collection_name,
+                name=self.config.collection,
                 metadata={
                     "hnsw:space": "cosine",  # Use cosine similarity
                     "description": "RAG knowledge base for MCP server",
@@ -71,8 +88,8 @@ class RagBackend:
             )
 
             # Load embedding model
-            logger.info(f"Loading embedding model: {self.embedding_model_name}")
-            self.model = SentenceTransformer(self.embedding_model_name)
+            logger.info(f"Loading embedding model: {self.config.embedding_model}")
+            self.model = SentenceTransformer(self.config.embedding_model)
 
             doc_count = self.collection.count()
             logger.info(f"RAG backend initialized with {doc_count} documents")
@@ -143,104 +160,6 @@ class RagBackend:
 
         except Exception as e:
             logger.error(f"Search failed: {e}")
-            raise
-
-    async def add_document(
-        self,
-        content: str,
-        metadata: Dict[str, Any],
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
-    ) -> Dict[str, Any]:
-        """
-        Add document to Chroma with chunking and embedding.
-
-        Args:
-            content: Full document text
-            metadata: Document metadata
-            chunk_size: Size of chunks in words
-            chunk_overlap: Overlap between chunks in words
-
-        Returns:
-            Document ID and statistics
-        """
-        try:
-            # Generate unique document ID
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            source_slug = (
-                metadata.get("source", "doc").replace(" ", "_").replace("/", "_")[:50]
-            )
-            doc_id = f"{source_slug}_{timestamp}"
-
-            # Chunk the document
-            chunks = self._chunk_text(content, chunk_size, chunk_overlap)
-            logger.info(f"Created {len(chunks)} chunks for document {doc_id}")
-
-            # Generate embeddings
-            embeddings = self.model.encode(chunks, convert_to_tensor=False).tolist()
-
-            # Create chunk IDs and metadata
-            chunk_ids = [f"{doc_id}_chunk_{i:04d}" for i in range(len(chunks))]
-            chunk_metadatas = [
-                {
-                    **metadata,
-                    "chunk_index": i,
-                    "parent_doc": doc_id,
-                    "chunk_count": len(chunks),
-                }
-                for i in range(len(chunks))
-            ]
-
-            # Add to Chroma
-            self.collection.add(
-                ids=chunk_ids,
-                embeddings=embeddings,
-                documents=chunks,
-                metadatas=chunk_metadatas,
-            )
-
-            logger.info(
-                f"Document {doc_id} added successfully with {len(chunks)} chunks"
-            )
-
-            return {
-                "document_id": doc_id,
-                "chunks_created": len(chunks),
-                "metadata": metadata,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to add document: {e}")
-            raise
-
-    async def delete_document(self, document_id: str) -> bool:
-        """
-        Delete document and all its chunks from Chroma.
-
-        Args:
-            document_id: ID of document to delete
-
-        Returns:
-            True if deleted, False if not found
-        """
-        try:
-            # Query for all chunks belonging to this document
-            results = self.collection.get(where={"parent_doc": document_id}, include=[])
-
-            if not results["ids"]:
-                logger.warning(f"Document {document_id} not found")
-                return False
-
-            # Delete all chunks
-            self.collection.delete(ids=results["ids"])
-
-            logger.info(
-                f"Deleted document {document_id} ({len(results['ids'])} chunks)"
-            )
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to delete document: {e}")
             raise
 
     async def list_documents(self, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
@@ -370,10 +289,10 @@ class RagBackend:
             return {
                 "total_documents": len(unique_docs),
                 "total_chunks": total_chunks,
-                "embedding_model": self.embedding_model_name,
+                "embedding_model": self.config.embedding_model,
                 "vector_dimension": self.model.get_sentence_embedding_dimension(),
-                "collection_name": self.collection_name,
-                "persist_directory": self.persist_directory,
+                "collection_name": self.config.collection,
+                "persist_directory": self.config.persist_dir,
             }
 
         except Exception as e:
@@ -388,36 +307,253 @@ class RagBackend:
         self.collection = None
         self.model = None
 
-    def _chunk_text(self, text: str, chunk_size: int, chunk_overlap: int) -> List[str]:
-        """
-        Simple word-based text chunking.
+    # ========================================================================
+    # Write Methods (for ingestion, not exposed via MCP)
+    # ========================================================================
 
-        For production, consider using:
-        - LangChain's RecursiveCharacterTextSplitter
-        - Semantic chunking based on embeddings
-        - Document-structure-aware chunking (headers, paragraphs)
+    async def add_document(
+        self,
+        content: str,
+        metadata: Dict[str, Any],
+        chunk_size: int = None,
+        chunk_overlap: int = None,
+    ) -> Dict[str, Any]:
+        """
+        Add a single document to the knowledge base.
 
         Args:
-            text: Text to chunk
-            chunk_size: Size in words
-            chunk_overlap: Overlap in words
+            content: Full document text
+            metadata: Document metadata (must include 'source')
+            chunk_size: Size of chunks in characters (defaults to config.chunk_size)
+            chunk_overlap: Overlap between chunks in characters (defaults to config.chunk_overlap)
 
         Returns:
-            List of text chunks
+            Document ID and statistics
         """
-        # Split into words
-        words = text.split()
+        try:
+            # Use config defaults if not specified
+            chunk_size = chunk_size or self.config.chunk_size
+            chunk_overlap = chunk_overlap or self.config.chunk_overlap
 
-        if len(words) <= chunk_size:
-            return [text]
+            # Generate unique document ID
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            source_slug = (
+                metadata.get("source", "doc").replace("/", "_").replace(".", "_")[:50]
+            )
+            doc_id = f"{source_slug}_{timestamp}"
 
-        chunks = []
-        step_size = chunk_size - chunk_overlap
+            # Chunk the document using LangChain
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                length_function=len,
+                separators=self.config.chunk_separators,
+            )
+            chunks = text_splitter.split_text(content)
 
-        for i in range(0, len(words), step_size):
-            chunk_words = words[i : i + chunk_size]
-            if chunk_words:  # Don't add empty chunks
-                chunk = " ".join(chunk_words)
-                chunks.append(chunk)
+            logger.info(f"Created {len(chunks)} chunks for document {doc_id}")
 
-        return chunks
+            # Generate embeddings
+            embeddings = self.model.encode(chunks, convert_to_tensor=False).tolist()
+
+            # Create chunk IDs and metadata
+            chunk_ids = [f"{doc_id}_chunk_{i:04d}" for i in range(len(chunks))]
+            chunk_metadatas = [
+                {
+                    **metadata,
+                    "chunk_index": i,
+                    "parent_doc": doc_id,
+                    "chunk_count": len(chunks),
+                }
+                for i in range(len(chunks))
+            ]
+
+            # Add to Chroma
+            self.collection.add(
+                ids=chunk_ids,
+                embeddings=embeddings,
+                documents=chunks,
+                metadatas=chunk_metadatas,
+            )
+
+            logger.info(
+                f"Document {doc_id} added successfully with {len(chunks)} chunks"
+            )
+
+            return {
+                "document_id": doc_id,
+                "chunks_created": len(chunks),
+                "metadata": metadata,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to add document: {e}")
+            raise
+
+    async def delete_document(self, document_id: str) -> bool:
+        """
+        Delete a document and all its chunks from the knowledge base.
+
+        Args:
+            document_id: ID of document to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        try:
+            # Query for all chunks belonging to this document
+            results = self.collection.get(where={"parent_doc": document_id}, include=[])
+
+            if not results["ids"]:
+                logger.warning(f"Document {document_id} not found")
+                return False
+
+            # Delete all chunks
+            self.collection.delete(ids=results["ids"])
+
+            logger.info(
+                f"Deleted document {document_id} ({len(results['ids'])} chunks)"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete document: {e}")
+            raise
+
+    async def ingest_directory(
+        self,
+        directory: str,
+        rebuild: bool = False,
+        chunk_size: int = None,
+        chunk_overlap: int = None,
+    ) -> Dict[str, Any]:
+        """
+        Ingest all markdown files from a directory into the knowledge base.
+
+        This is a bulk operation that efficiently processes multiple documents.
+
+        Args:
+            directory: Path to directory containing markdown files
+            rebuild: If True, delete existing collection first
+            chunk_size: Size of chunks in characters (defaults to config.chunk_size)
+            chunk_overlap: Overlap between chunks in characters (defaults to config.chunk_overlap)
+
+        Returns:
+            Statistics about the ingestion
+        """
+        try:
+            # Use config defaults if not specified
+            chunk_size = chunk_size or self.config.chunk_size
+            chunk_overlap = chunk_overlap or self.config.chunk_overlap
+
+            directory_path = Path(directory)
+
+            if not directory_path.exists():
+                raise FileNotFoundError(f"Directory not found: {directory}")
+
+            # Handle rebuild
+            if rebuild:
+                try:
+                    self.client.delete_collection(name=self.config.collection)
+                    logger.info(f"Deleted existing collection: {self.config.collection}")
+
+                    # Recreate collection
+                    self.collection = self.client.get_or_create_collection(
+                        name=self.config.collection,
+                        metadata={
+                            "hnsw:space": "cosine",
+                            "description": "RAG knowledge base for MCP server",
+                        },
+                    )
+                except Exception:
+                    logger.debug(f"No existing collection to delete: {self.config.collection}")
+
+            # Find all markdown files
+            markdown_files = list(directory_path.rglob("*.md"))
+
+            if not markdown_files:
+                logger.warning(f"No markdown files found in {directory}")
+                return {
+                    "documents_processed": 0,
+                    "total_chunks": 0,
+                    "files_processed": [],
+                }
+
+            logger.info(f"Found {len(markdown_files)} markdown files")
+
+            # Prepare chunker
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                length_function=len,
+                separators=self.config.chunk_separators,
+            )
+
+            # Process all documents and collect chunks
+            all_chunk_ids = []
+            all_chunks = []
+            all_metadatas = []
+            files_processed = []
+
+            for file_path in markdown_files:
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                    relative_path = file_path.relative_to(directory_path)
+
+                    # Generate document ID
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    source_slug = str(relative_path).replace("/", "_").replace(".", "_")[:50]
+                    doc_id = f"{source_slug}_{timestamp}"
+
+                    # Chunk document
+                    chunks = text_splitter.split_text(content)
+
+                    # Create chunk metadata
+                    for i, chunk_text in enumerate(chunks):
+                        all_chunk_ids.append(f"{doc_id}_chunk_{i:04d}")
+                        all_chunks.append(chunk_text)
+                        all_metadatas.append({
+                            "source": str(relative_path),
+                            "parent_doc": doc_id,
+                            "chunk_index": i,
+                            "chunk_count": len(chunks),
+                            "created_at": datetime.now().isoformat(),
+                        })
+
+                    files_processed.append(str(relative_path))
+                    logger.debug(f"Processed {relative_path}: {len(chunks)} chunks")
+
+                except Exception as e:
+                    logger.error(f"Failed to process {file_path}: {e}")
+
+            # Batch generate embeddings for ALL chunks
+            logger.info(f"Generating embeddings for {len(all_chunks)} chunks...")
+            embeddings = self.model.encode(
+                all_chunks,
+                convert_to_tensor=False,
+                show_progress_bar=True,
+                batch_size=32,
+            ).tolist()
+
+            # Store all chunks in one operation
+            logger.info("Storing embeddings in ChromaDB...")
+            self.collection.add(
+                ids=all_chunk_ids,
+                embeddings=embeddings,
+                documents=all_chunks,
+                metadatas=all_metadatas,
+            )
+
+            logger.info(
+                f"✓ Ingestion complete: {len(files_processed)} documents, {len(all_chunks)} chunks"
+            )
+
+            return {
+                "documents_processed": len(files_processed),
+                "total_chunks": len(all_chunks),
+                "files_processed": files_processed,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to ingest directory: {e}")
+            raise
