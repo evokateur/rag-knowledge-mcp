@@ -2,7 +2,6 @@
 RAG Backend Implementation using Chroma + Sentence Transformers
 
 This backend provides complete RAG functionality with ChromaDB vector database.
-Read methods are exposed via MCP, write methods are used by ingest_knowledge.py.
 
 Features:
 - ChromaDB for vector storage
@@ -455,7 +454,9 @@ class RagBackend(AbstractRagBackend):
             if rebuild:
                 try:
                     self.client.delete_collection(name=self.config.collection)
-                    logger.info(f"Deleted existing collection: {self.config.collection}")
+                    logger.info(
+                        f"Deleted existing collection: {self.config.collection}"
+                    )
 
                     # Recreate collection
                     self.collection = self.client.get_or_create_collection(
@@ -466,7 +467,9 @@ class RagBackend(AbstractRagBackend):
                         },
                     )
                 except Exception:
-                    logger.debug(f"No existing collection to delete: {self.config.collection}")
+                    logger.debug(
+                        f"No existing collection to delete: {self.config.collection}"
+                    )
 
             # Find all markdown files
             markdown_files = list(directory_path.rglob("*.md"))
@@ -502,7 +505,9 @@ class RagBackend(AbstractRagBackend):
 
                     # Generate document ID
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                    source_slug = str(relative_path).replace("/", "_").replace(".", "_")[:50]
+                    source_slug = (
+                        str(relative_path).replace("/", "_").replace(".", "_")[:50]
+                    )
                     doc_id = f"{source_slug}_{timestamp}"
 
                     # Chunk document
@@ -512,13 +517,15 @@ class RagBackend(AbstractRagBackend):
                     for i, chunk_text in enumerate(chunks):
                         all_chunk_ids.append(f"{doc_id}_chunk_{i:04d}")
                         all_chunks.append(chunk_text)
-                        all_metadatas.append({
-                            "source": str(relative_path),
-                            "parent_doc": doc_id,
-                            "chunk_index": i,
-                            "chunk_count": len(chunks),
-                            "created_at": datetime.now().isoformat(),
-                        })
+                        all_metadatas.append(
+                            {
+                                "source": str(relative_path),
+                                "parent_doc": doc_id,
+                                "chunk_index": i,
+                                "chunk_count": len(chunks),
+                                "created_at": datetime.now().isoformat(),
+                            }
+                        )
 
                     files_processed.append(str(relative_path))
                     logger.debug(f"Processed {relative_path}: {len(chunks)} chunks")
