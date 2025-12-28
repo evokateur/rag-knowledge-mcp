@@ -222,10 +222,10 @@ Before using the MCP server, populate your knowledge base:
 # Place markdown files in ./knowledge-base/ directory
 # Then run ingestion script
 
-python ingest_knowledge.py
+uv run python ingest_knowledge.py
 
 # Or rebuild from scratch
-python ingest_knowledge.py --rebuild
+uv run python ingest_knowledge.py --rebuild
 ```
 
 The ingestion script:
@@ -498,7 +498,7 @@ uv run python rag_knowledge_mcp.py --help
 ### Test with MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector python rag_knowledge_mcp.py
+npx @modelcontextprotocol/inspector uv run python rag_knowledge_mcp.py
 ```
 
 This opens a web interface where you can test all tools interactively.
@@ -582,12 +582,12 @@ uv run python -c "from mcp.server.fastmcp import FastMCP"
 1. Check config file path and JSON syntax
 2. Verify Python path in config
 3. Check Claude logs (Help > Show Logs)
-4. Test server directly: `python rag_knowledge_mcp.py`
+4. Test server directly: `uv run python rag_knowledge_mcp.py`
 
 ### Search returns no results
 
 1. Verify documents are indexed: Use `rag_list_documents` tool or check stats
-2. Run ingestion if knowledge base is empty: `python ingest_knowledge.py`
+2. Run ingestion if knowledge base is empty: `uv run python ingest_knowledge.py`
 3. Check score threshold (try 0.0 first to see all results)
 4. Test embedding model separately
 5. Verify vector DB connection and collection name
