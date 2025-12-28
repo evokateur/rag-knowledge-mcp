@@ -465,7 +465,7 @@ PINECONE_ENV=us-west1-gcp
 The project includes comprehensive pytest tests:
 
 ```bash
-# Run all tests
+# Run all tests (skips e2e by default for speed)
 pytest
 
 # Run with verbose output
@@ -474,6 +474,13 @@ pytest -v
 # Run specific test file
 pytest test_abc.py              # Test abstract base class
 pytest test_rag_backend.py      # Test backend implementation
+pytest test_mcp_server.py       # Test MCP tools (integration)
+
+# Run end-to-end tests (slower, tests actual MCP protocol)
+pytest -m e2e
+
+# Run everything including e2e tests
+pytest -m ""
 
 # Run specific test
 pytest test_rag_backend.py::test_semantic_search
@@ -482,7 +489,15 @@ pytest test_rag_backend.py::test_semantic_search
 pytest --cov=. --cov-report=html
 ```
 
+**Test Suite:**
+- **test_abc.py** - Abstract base class validation
+- **test_rag_backend.py** - Backend implementation (ChromaDB, chunking, embeddings)
+- **test_mcp_server.py** - MCP tool integration tests (fast)
+- **test_e2e_mcp.py** - End-to-end MCP protocol tests (marked `@pytest.mark.e2e`, skipped by default)
+
 Tests automatically use separate test database (`./test_chroma_db/`) via `TEST_*` environment variables.
+
+**E2E Tests**: The e2e tests start the actual MCP server as a subprocess and test the complete protocol communication. They're skipped by default for faster test runs. Run them explicitly with `pytest -m e2e` when you need to verify the MCP server works correctly.
 
 ### Test Server Startup
 

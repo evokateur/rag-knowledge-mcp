@@ -290,9 +290,9 @@ async def search_knowledge(params: SearchKnowledgeInput, ctx: Context) -> str:
         str: Search results in requested format (Markdown or JSON)
     """
     try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_context["rag_backend"]
 
-        ctx.log_info(
+        await ctx.info(
             f"Searching knowledge base: '{params.query}' (top_k={params.top_k})"
         )
 
@@ -306,7 +306,7 @@ async def search_knowledge(params: SearchKnowledgeInput, ctx: Context) -> str:
         # Filter by score threshold (defensive, backend should handle this)
         results = [r for r in results if r["score"] >= params.score_threshold]
 
-        ctx.log_info(
+        await ctx.info(
             f"Found {len(results)} results above threshold {params.score_threshold}"
         )
 
@@ -325,7 +325,7 @@ async def search_knowledge(params: SearchKnowledgeInput, ctx: Context) -> str:
 
     except Exception as e:
         error_msg = f"Error searching knowledge base: {str(e)}"
-        ctx.log_error(error_msg)
+        await ctx.error(error_msg)
         return f"Error: {error_msg}\n\nPlease check your query and try again."
 
 
@@ -356,9 +356,9 @@ async def list_documents(params: ListDocumentsInput, ctx: Context) -> str:
         str: Document list in requested format with pagination metadata
     """
     try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_context["rag_backend"]
 
-        ctx.log_info(
+        await ctx.info(
             f"Listing documents (limit={params.limit}, offset={params.offset})"
         )
 
@@ -367,7 +367,7 @@ async def list_documents(params: ListDocumentsInput, ctx: Context) -> str:
             limit=params.limit, offset=params.offset
         )
 
-        ctx.log_info(
+        await ctx.info(
             f"Found {doc_data['count']} documents (total: {doc_data['total']})"
         )
 
@@ -379,7 +379,7 @@ async def list_documents(params: ListDocumentsInput, ctx: Context) -> str:
 
     except Exception as e:
         error_msg = f"Error listing documents: {str(e)}"
-        ctx.log_error(error_msg)
+        await ctx.error(error_msg)
         return f"Error: {error_msg}\n\nPlease try again."
 
 
@@ -408,9 +408,9 @@ async def get_document(params: GetDocumentInput, ctx: Context) -> str:
         str: Document content in requested format, or error if not found
     """
     try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_context["rag_backend"]
 
-        ctx.log_info(f"Retrieving document: {params.document_id}")
+        await ctx.info(f"Retrieving document: {params.document_id}")
 
         # Get document
         doc = await rag_backend.get_document(params.document_id)
@@ -424,7 +424,7 @@ async def get_document(params: GetDocumentInput, ctx: Context) -> str:
                 indent=2,
             )
 
-        ctx.log_info(f"Document retrieved: {params.document_id}")
+        await ctx.info(f"Document retrieved: {params.document_id}")
 
         # Format response
         if params.response_format == ResponseFormat.JSON:
@@ -434,7 +434,7 @@ async def get_document(params: GetDocumentInput, ctx: Context) -> str:
 
     except Exception as e:
         error_msg = f"Error retrieving document: {str(e)}"
-        ctx.log_error(error_msg)
+        await ctx.error(error_msg)
         return f"Error: {error_msg}\n\nPlease check the document ID and try again."
 
 
@@ -459,14 +459,14 @@ async def get_stats(ctx: Context) -> str:
         str: JSON-formatted statistics
     """
     try:
-        rag_backend: RagBackend = ctx.request_context.lifespan_state["rag_backend"]
+        rag_backend: RagBackend = ctx.request_context.lifespan_context["rag_backend"]
 
-        ctx.log_info("Retrieving knowledge base statistics")
+        await ctx.info("Retrieving knowledge base statistics")
 
         # Get stats
         stats = await rag_backend.get_stats()
 
-        ctx.log_info(
+        await ctx.info(
             f"Stats retrieved: {stats['total_documents']} documents, {stats['total_chunks']} chunks"
         )
 
@@ -474,7 +474,7 @@ async def get_stats(ctx: Context) -> str:
 
     except Exception as e:
         error_msg = f"Error retrieving statistics: {str(e)}"
-        ctx.log_error(error_msg)
+        await ctx.error(error_msg)
         return json.dumps({"success": False, "error": error_msg}, indent=2)
 
 

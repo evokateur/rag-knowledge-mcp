@@ -93,12 +93,12 @@ async def mcp_context(test_knowledge_base):
         await rag_backend.ingest_directory(directory=str(test_knowledge_base))
 
         mock_request_context = Mock()
-        mock_request_context.lifespan_state = lifespan_state
+        mock_request_context.lifespan_context = lifespan_state
 
         mock_ctx = Mock()
         mock_ctx.request_context = mock_request_context
-        mock_ctx.log_info = Mock()
-        mock_ctx.log_error = Mock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.error = AsyncMock()
 
         yield mock_ctx
 
