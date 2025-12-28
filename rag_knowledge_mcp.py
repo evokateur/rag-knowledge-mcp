@@ -47,7 +47,7 @@ class ResponseFormat(str, Enum):
 
 
 @asynccontextmanager
-async def app_lifespan():
+async def app_lifespan(app):
     """
     Manage resources that persist for the server's lifetime.
 
