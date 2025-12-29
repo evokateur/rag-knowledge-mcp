@@ -15,22 +15,56 @@ from pydantic import BaseModel, Field, ConfigDict
 if TYPE_CHECKING:
     from abstract_backend import AbstractRagBackend
 
+# Project root directory (where config.py is located)
+PROJECT_ROOT = Path(__file__).parent
+
 # Load environment variables from .env file if it exists
-env_file = Path(__file__).parent / ".env"
+env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
     load_dotenv(env_file, override=True)
-
-# Determine if we're running in test mode (pytest sets PYTEST_CURRENT_TEST)
-_is_test_mode = "PYTEST_CURRENT_TEST" in os.environ
 
 
 # Helper to get config value with optional TEST_ prefix in test mode
 def _get_config(key: str, default: str) -> str:
-    if _is_test_mode:
+    """
+    Get configuration value with TEST_ prefix in test mode.
+
+    Checks for PYTEST_CURRENT_TEST environment variable at runtime
+    (not import time) to detect test mode, ensuring proper test isolation.
+    """
+    # Check test mode dynamically (pytest sets PYTEST_CURRENT_TEST during test execution)
+    is_test_mode = "PYTEST_CURRENT_TEST" in os.environ
+
+    if is_test_mode:
         test_value = os.getenv(f"TEST_{key}")
         if test_value is not None:
             return test_value
     return os.getenv(key, default)
+
+
+# Helper to convert relative paths to absolute paths relative to project root
+def _absolute_path(path_str: str) -> str:
+    """
+    Convert path to absolute path, resolving relative paths from project root.
+
+    This ensures that relative paths in .env are always interpreted
+    relative to the project directory (where config.py is), not relative
+    to the current working directory.
+
+    Args:
+        path_str: Path string (can be absolute or relative)
+
+    Returns:
+        Absolute path as string
+
+    Example:
+        "./chroma_db" -> "/absolute/path/to/project/chroma_db"
+        "/tmp/db" -> "/tmp/db" (unchanged)
+    """
+    path = Path(path_str)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return str(path.absolute())
 
 
 # ============================================================================
@@ -49,12 +83,12 @@ class BackendConfig(BaseModel):
     model_config = ConfigDict(frozen=True)  # Make config immutable after creation
 
     knowledge_dir: str = Field(
-        default_factory=lambda: _get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base"),
+        default_factory=lambda: _absolute_path(_get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base")),
         description="Knowledge base source directory (input for ingestion)",
     )
 
     persist_dir: str = Field(
-        default_factory=lambda: _get_config("RAG_PERSIST_DIR", "./chroma_db"),
+        default_factory=lambda: _absolute_path(_get_config("RAG_PERSIST_DIR", "./chroma_db")),
         description="Vector database directory (output/storage)",
     )
 
@@ -76,10 +110,10 @@ class BackendConfig(BaseModel):
 # ============================================================================
 
 # Knowledge base source directory (input for ingestion)
-RAG_KNOWLEDGE_DIR = _get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base")
+RAG_KNOWLEDGE_DIR = _absolute_path(_get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base"))
 
 # Vector database directory (output of ingestion, input for queries)
-RAG_PERSIST_DIR = _get_config("RAG_PERSIST_DIR", "./chroma_db")
+RAG_PERSIST_DIR = _absolute_path(_get_config("RAG_PERSIST_DIR", "./chroma_db"))
 
 # Collection name in the vector database
 RAG_COLLECTION = _get_config("RAG_COLLECTION", "knowledge_base")
