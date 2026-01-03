@@ -10,7 +10,14 @@ uv sync --extra dev # installs pytest tests
 
 ### Ingesting Documents
 
-Default configuration assumes knowledge base is in `knowledge-base` in the project root. Since this is git-ignored I create a symlink to a directory with my knowledge base markdown files. The directory can also be configured in `.env` (see [`.env.example`](https://github.com/evokateur/rag-knowledge-mcp/blob/main/.env.example))
+Default configuration assumes knowledge base is in a directory called `knowledge-base` in the project root. 
+Since this is git-ignored I create a `knowledge-base` symlink to another directory.
+
+The directory can also be configured by copying `.env.example` to `.env` and...
+
+```
+RAG_KNOWLEDGE_DIR=./knowledge-base # <--- changing this to something else
+```
 
 Once the documents are in place:
 
