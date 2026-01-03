@@ -64,7 +64,7 @@ I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
-This is the contents of `wrapper-example.sh`, which can be copied and modified:
+The contents of `wrapper-example.sh` can be copied and modified
 
 ```bash
 #!/usr/bin/env bash
