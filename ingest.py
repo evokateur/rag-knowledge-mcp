@@ -9,7 +9,7 @@ Always rebuilds the collection from scratch to avoid duplicates and ensure
 the vector database matches the current state of the knowledge base.
 
 Usage:
-    python ingest_knowledge.py
+    python ingest.py
 """
 
 import asyncio

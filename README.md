@@ -22,7 +22,7 @@ RAG_KNOWLEDGE_DIR=./knowledge-base # <--- changing this to something else
 Once the documents are in place:
 
 ```bash
-uv run python ingest_knowledge.py 
+uv run python ingest.py
 ```
 
 ## Configuration
