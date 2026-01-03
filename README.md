@@ -52,7 +52,7 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 ```
 
 Note: Claude Desktop did not seem to have `uv` in its path so I used the
-path returned from `which uv`
+absolute path returned from `which uv`
 
 ### Claude Code
 
