@@ -32,7 +32,7 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
       "args": [
         "run",
         "--directory",
-        "/absolute/path/to/your/project",
+        "/absolute/path/to/this/project",
         "python",
         "rag_knowledge_mcp.py"
       ],
@@ -44,16 +44,30 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 }
 ```
 
-Note: Claude Desktop did not seem to have `uv` in its path so I used the absolute path from `which uv`
+Note: Claude Desktop did not seem to have `uv` in its path so I used the
+path returned from `which uv`
 
 ### Claude Code
 
-https://code.claude.com/docs/en/mcp
+<https://code.claude.com/docs/en/mcp>
 
-What I did:
+I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 
 ```bash
-claude mcp add-from-claude-desktop
+claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
+This is the contents of `wrapper-example.sh`, which can be copied and modified:
 
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_DIR="/absolute/path/to/this/project"
+UV="/absolute/path/to/uv"
+
+export LOG_LEVEL="${LOG_LEVEL:-INFO}"
+
+cd "$PROJECT_DIR"
+exec "$UV" run python rag_knowledge_mcp.py
+```
