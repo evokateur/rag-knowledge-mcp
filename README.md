@@ -25,7 +25,7 @@ Once the documents are in place:
 uv run python ingest.py
 ```
 
-## Configuration
+## Client Configuration
 
 ### Claude Desktop
 
