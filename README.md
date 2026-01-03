@@ -10,8 +10,8 @@ uv sync --extra dev # installs pytest tests
 
 ### Ingesting Documents
 
-Default configuration assumes knowledge base is in a directory called `knowledge-base` in the project root. 
-Since this is git-ignored I create a `knowledge-base` symlink to another directory.
+Default configuration assumes the knowledge base docs are in `knowledge-base` in the project root. 
+Since this is git-ignored one can create a symlink named `knowledge-base` pointing elsewhere.
 
 The directory can also be configured by copying `.env.example` to `.env` and...
 
