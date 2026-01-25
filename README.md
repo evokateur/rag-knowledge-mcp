@@ -1,6 +1,6 @@
 # RAG Knowledge Base MCP Server
 
-This is an MCP server I use to connect a RAG knowledge base to Claude
+This is an MCP server I use to connect a RAG knowledge base to Claude Desktop, Claude Code, and [other things](https://github.com/evokateur/cv-joint).
 
 ## Setup
 
