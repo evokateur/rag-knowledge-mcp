@@ -10,8 +10,11 @@ uv sync --extra dev # installs pytest tests
 
 ### Ingesting Documents
 
-Default configuration assumes the knowledge base docs are in `knowledge-base` in the project root. 
-Since this is git-ignored one can create a symlink named `knowledge-base` pointing elsewhere.
+The Chroma backend does embedding and retrieval (you can use any sort of embedding/retrieval by implementing `AbstractRagBackend`)
+
+Default configuration assumes the docs will be in `knowledge-base` in the project root.
+
+Anything with that name is git-ignored, so one can create a symlink named `knowledge-base` pointing elsewhere.
 
 The directory can also be configured by copying `.env.example` to `.env` and...
 
@@ -19,10 +22,35 @@ The directory can also be configured by copying `.env.example` to `.env` and...
 RAG_KNOWLEDGE_DIR=./knowledge-base # <--- changing this to something else
 ```
 
+What my directory looks like (more or less):
+
+```sh
+knowledge-base
+├── companies
+│   └── frobozz-co.md
+│   └── acme.md
+├── developers
+│   └── wesley-hinkle.md
+└── projects
+|   ├── magic-api-gateway.md
+|   ├── zork-legacy-cms.md
+|   ├── torch-saas.md
+|   ├── grue-detector.md
+|   ├── zorkmid-sdk.md
+|   ├── anvil.md
+└── skills-mapping.md
+```
+
 Once the documents are in place:
 
-```bash
+```sh
 uv run python ingest.py
+```
+
+or just
+
+```sh
+make embeddings
 ```
 
 ## Client Configuration
@@ -60,13 +88,13 @@ absolute path returned from `which uv`
 
 I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 
-```bash
+```sh
 claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
 The contents of `wrapper-example.sh` can be copied and modified
 
-```bash
+```sh
 #!/usr/bin/env bash
 set -euo pipefail
 
