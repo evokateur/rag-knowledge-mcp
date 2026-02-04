@@ -106,8 +106,6 @@ This adds an entry to `~/.claude.json` like this:
 ...
 ```
 
-I have not tried configuring Claude Desktop the same way. Since the paths in the script expand, the configuration would be more portable.
-
 The contents of `wrapper-example.sh` can be copied and modified
 
 ```sh
