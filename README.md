@@ -93,6 +93,21 @@ I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 claude mcp add --scope user --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
+This adds an entry to `~/.claude.json` like this:
+
+```json
+  "mcpServers": {
+    "rag-knowledge": {
+      "type": "stdio",
+      "command": "/Users/wesley/.bin/rag-knowledge-mcp",
+      "args": [],
+      "env": {}
+    },
+...
+```
+
+I have not tried configuring Claude Desktop the same way. Since the paths in the script expand, the configuration would be more portable.
+
 The contents of `wrapper-example.sh` can be copied and modified
 
 ```sh
