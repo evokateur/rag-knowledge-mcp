@@ -89,7 +89,7 @@ absolute path returned from `which uv`
 I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 
 ```sh
-claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
+claude mcp add --scope user --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
 The contents of `wrapper-example.sh` can be copied and modified
@@ -98,8 +98,11 @@ The contents of `wrapper-example.sh` can be copied and modified
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="/absolute/path/to/this/project"
-UV="/absolute/path/to/uv"
+PROJECT_DIR="$HOME/path/to/this/project"
+UV="$(which uv)"
+
+echo "$PROJECT_DIR"
+echo "$UV"
 
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
