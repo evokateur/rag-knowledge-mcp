@@ -37,6 +37,7 @@ knowledge-base
 |   ├── torch-saas.md
 |   ├── grue-detector.md
 |   ├── zorkmid-sdk.md
+|   ├── hello-footpad.md
 |   ├── anvil.md
 └── skills-mapping.md
 ```
