@@ -37,6 +37,7 @@ knowledge-base
 |   ├── torch-saas.md
 |   ├── grue-detector.md
 |   ├── zorkmid-sdk.md
+|   ├── hello-footpad.md
 |   ├── anvil.md
 └── skills-mapping.md
 ```
@@ -89,7 +90,20 @@ absolute path returned from `which uv`
 I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
 
 ```sh
-claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
+claude mcp add --scope user --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
+```
+
+This adds an entry to `~/.claude.json` like this:
+
+```json
+  "mcpServers": {
+    "rag-knowledge": {
+      "type": "stdio",
+      "command": "/Users/wesley/.bin/rag-knowledge-mcp",
+      "args": [],
+      "env": {}
+    },
+...
 ```
 
 The contents of `wrapper-example.sh` can be copied and modified
@@ -98,8 +112,11 @@ The contents of `wrapper-example.sh` can be copied and modified
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_DIR="/absolute/path/to/this/project"
-UV="/absolute/path/to/uv"
+PROJECT_DIR="$HOME/path/to/this/project"
+UV="$(which uv)"
+
+echo "$PROJECT_DIR"
+echo "$UV"
 
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
