@@ -16,7 +16,7 @@ Default configuration assumes the docs will be in `knowledge-base` in the projec
 
 Anything with that name is git-ignored, so one can create a symlink named `knowledge-base` pointing elsewhere.
 
-The directory can also be configured by copying `.env.example` to `.env` and...
+The directory can also be configured by copying `example.env` to `.env` and...
 
 ```
 RAG_KNOWLEDGE_DIR=./knowledge-base # <--- changing this to something else
