@@ -87,23 +87,20 @@ absolute path returned from `which uv`
 
 <https://code.claude.com/docs/en/mcp>
 
-I created a wrapper script (`~/.bin/rag-knowledge-mcp`) then ran
-
+Installs with `--scope local` by default (`claude` in CWD)
 ```sh
-claude mcp add --scope user --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
+claude mcp add rag-knowledge -- uv run --directory /absolute/path/to/this/project python rag_knowledge_mcp.py
 ```
 
-This adds an entry to `~/.claude.json` like this:
+Add `--scope user` for `claude` in any directory:
+```sh
+claude mcp add --scope user rag-knowledge -- uv run --directory /absolute/path/to/this/project python rag_knowledge_mcp.py
+```
 
-```json
-  "mcpServers": {
-    "rag-knowledge": {
-      "type": "stdio",
-      "command": "/Users/wesley/.bin/rag-knowledge-mcp",
-      "args": [],
-      "env": {}
-    },
-...
+Before I managed to work out the syntax above I created a wrapper script:
+
+```sh
+claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
 ```
 
 The contents of `wrapper-example.sh` can be copied and modified
