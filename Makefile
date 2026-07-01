@@ -1,7 +1,7 @@
 .PHONY: embeddings test test-e2e
 
 embeddings:
-	uv run python ingest_knowledge.py
+	uv run python ingest.py
 
 test:
 	uv run pytest

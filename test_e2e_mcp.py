@@ -5,7 +5,7 @@ End-to-End MCP Server Test
 Tests the complete MCP protocol communication by starting the server
 as a subprocess and connecting via the MCP SDK client.
 
-Note: Run `uv run python ingest_knowledge.py` first to populate the knowledge base.
+Note: Run `uv run python ingest.py` first to populate the knowledge base.
 """
 
 import json
