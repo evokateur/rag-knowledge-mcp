@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).parent
 # Load environment variables from .env file if it exists
 env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
-    load_dotenv(env_file, override=True)
+    load_dotenv(env_file)
 
 
 # Helper to get config value with optional TEST_ prefix in test mode
