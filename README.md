@@ -12,15 +12,16 @@ uv sync --extra dev # installs pytest tests
 
 The Chroma backend does embedding and retrieval (you can use any sort of embedding/retrieval by implementing `AbstractRagBackend`)
 
-Default configuration assumes the docs will be in `knowledge-base` in the project root.
+`RAG_KNOWLEDGE_DIR` must be set, either in `.env` (copy `.env.example` to `.env` and edit it) or a shell environment variable.
 
-Anything with that name is git-ignored, so one can create a symlink named `knowledge-base` pointing elsewhere.
-
-The directory can also be configured by copying `example.env` to `.env` and...
+>[!important]
+>Shell environment variables takes precedence over `.env` file
 
 ```
-RAG_KNOWLEDGE_DIR=./knowledge-base # <--- changing this to something else
+RAG_KNOWLEDGE_DIR=./knowledge-base
 ```
+
+`knowledge-base` in the project root is git-ignored
 
 What my directory looks like (more or less):
 
@@ -88,11 +89,13 @@ absolute path returned from `which uv`
 <https://code.claude.com/docs/en/mcp>
 
 Installs with `--scope local` by default (`claude` in CWD)
+
 ```sh
 claude mcp add rag-knowledge -- uv run --directory /absolute/path/to/this/project python rag_knowledge_mcp.py
 ```
 
 Add `--scope user` for `claude` in any directory:
+
 ```sh
 claude mcp add --scope user rag-knowledge -- uv run --directory /absolute/path/to/this/project python rag_knowledge_mcp.py
 ```

@@ -12,7 +12,6 @@ from chroma_backend import ChromaConfig
 # ============================================================================
 
 BACKEND_DEFAULTS = {
-    "knowledge_dir": str((PROJECT_ROOT / "knowledge-base").absolute()),
     "persist_dir": str((PROJECT_ROOT / "chroma_db").absolute()),
     "collection": "knowledge_base",
     "embedding_model": "all-MiniLM-L6-v2",
@@ -78,13 +77,24 @@ def test_backend_config_defaults(monkeypatch):
         monkeypatch.delenv(key, raising=False)
         monkeypatch.delenv(f"TEST_{key}", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setenv("RAG_KNOWLEDGE_DIR", "./knowledge-base")
 
     config = BackendConfig()
 
-    assert config.knowledge_dir == BACKEND_DEFAULTS["knowledge_dir"]
+    assert config.knowledge_dir == str((PROJECT_ROOT / "knowledge-base").absolute())
     assert config.persist_dir == BACKEND_DEFAULTS["persist_dir"]
     assert config.collection == BACKEND_DEFAULTS["collection"]
     assert config.embedding_model == BACKEND_DEFAULTS["embedding_model"]
+
+
+def test_backend_config_requires_knowledge_dir(monkeypatch):
+    """BackendConfig raises when RAG_KNOWLEDGE_DIR is not set anywhere."""
+    monkeypatch.delenv("RAG_KNOWLEDGE_DIR", raising=False)
+    monkeypatch.delenv("TEST_RAG_KNOWLEDGE_DIR", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+    with pytest.raises(ValueError, match="RAG_KNOWLEDGE_DIR"):
+        BackendConfig()
 
 
 def test_backend_config_from_env(monkeypatch):
@@ -117,6 +127,7 @@ def test_chroma_config_defaults(monkeypatch):
         monkeypatch.delenv(key, raising=False)
         monkeypatch.delenv(f"TEST_{key}", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setenv("RAG_KNOWLEDGE_DIR", "./knowledge-base")
 
     config = ChromaConfig()
 

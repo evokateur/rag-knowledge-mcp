@@ -42,6 +42,19 @@ def _get_config(key: str, default: str) -> str:
     return os.getenv(key, default)
 
 
+def _require_config(key: str) -> str:
+    """
+    Get a required configuration value with no default.
+
+    Raises ValueError if the (optionally TEST_-prefixed) environment
+    variable is not set in the shell or .env.
+    """
+    value = _get_config(key, "")
+    if not value:
+        raise ValueError(f"{key} must be set (via .env or environment variable)")
+    return value
+
+
 # Helper to convert relative paths to absolute paths relative to project root
 def _absolute_path(path_str: str) -> str:
     """
@@ -83,7 +96,7 @@ class BackendConfig(BaseModel):
     model_config = ConfigDict(frozen=True)  # Make config immutable after creation
 
     knowledge_dir: str = Field(
-        default_factory=lambda: _absolute_path(_get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base")),
+        default_factory=lambda: _absolute_path(_require_config("RAG_KNOWLEDGE_DIR")),
         description="Knowledge base source directory (input for ingestion)",
     )
 
@@ -110,7 +123,7 @@ class BackendConfig(BaseModel):
 # ============================================================================
 
 # Knowledge base source directory (input for ingestion)
-RAG_KNOWLEDGE_DIR = _absolute_path(_get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base"))
+RAG_KNOWLEDGE_DIR = _absolute_path(_require_config("RAG_KNOWLEDGE_DIR"))
 
 # Vector database directory (output of ingestion, input for queries)
 RAG_PERSIST_DIR = _absolute_path(_get_config("RAG_PERSIST_DIR", "./chroma_db"))
