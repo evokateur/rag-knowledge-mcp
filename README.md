@@ -14,12 +14,12 @@ The Chroma backend does embedding and retrieval (you can use any sort of embeddi
 
 `RAG_KNOWLEDGE_DIR` must be set, either in `.env` (copy `.env.example` to `.env` and edit it) or a shell environment variable.
 
->[!important]
->Shell environment variables takes precedence over `.env` file
-
 ```
 RAG_KNOWLEDGE_DIR=./knowledge-base
 ```
+
+>[!important]
+>Shell environment variables takes precedence over `.env` file
 
 `knowledge-base` in the project root is git-ignored
 
