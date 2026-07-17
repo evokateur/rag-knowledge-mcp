@@ -10,11 +10,13 @@ With `pytest` tests:
 uv sync --extra dev
 ```
 
+Refer to `.env.example` for defaults to override in `.env` (optional).
+
 ### Ingesting Documents
 
 Embedding and retrieval are done with Chroma (other types of embedding/retrieval are possible by implementing `AbstractRagBackend`)
 
-Default configuration assumes the KB docs will be at the project root in `./knowledge-base` – which can be a symlink.
+Default configuration assumes the KB docs will be in `./knowledge-base` – which can be a symlink.
 
 What my directory looks like (more or less):
 
