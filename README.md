@@ -4,24 +4,17 @@ This is an MCP server I use to connect a RAG knowledge base to Claude Desktop, C
 
 ## Setup
 
+With `pytest` tests:
+
 ```bash
-uv sync --extra dev # installs pytest tests
+uv sync --extra dev
 ```
 
 ### Ingesting Documents
 
-The Chroma backend does embedding and retrieval (you can use any sort of embedding/retrieval by implementing `AbstractRagBackend`)
+Embedding and retrieval are done with Chroma (other types of embedding/retrieval are possible by implementing `AbstractRagBackend`)
 
-`RAG_KNOWLEDGE_DIR` must be set, either in `.env` (copy `.env.example` to `.env` and edit it) or a shell environment variable.
-
-```
-RAG_KNOWLEDGE_DIR=./knowledge-base
-```
-
->[!important]
->Shell environment variables takes precedence over `.env` file
-
-`knowledge-base` in the project root is git-ignored
+Default configuration assumes the KB docs will be at the project root in `./knowledge-base` – which can be a symlink.
 
 What my directory looks like (more or less):
 
@@ -43,7 +36,7 @@ knowledge-base
 └── skills-mapping.md
 ```
 
-Once the documents are in place:
+Once the documents are linked up/in place:
 
 ```sh
 uv run python ingest.py
@@ -65,7 +58,7 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 {
   "mcpServers": {
     "rag-knowledge": {
-      "command": "/absolute/path/to/uv",
+      "command": "uv",
       "args": [
         "run",
         "--directory",
@@ -81,8 +74,7 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 }
 ```
 
-Note: Claude Desktop did not seem to have `uv` in its path so I used the
-absolute path returned from `which uv`
+`uv` may need to be an absolute path, depending on how it's installed.
 
 ### Claude Code
 
@@ -98,28 +90,4 @@ Add `--scope user` for `claude` in any directory:
 
 ```sh
 claude mcp add --scope user rag-knowledge -- uv run --directory /absolute/path/to/this/project python rag_knowledge_mcp.py
-```
-
-Before I managed to work out the syntax above I created a wrapper script:
-
-```sh
-claude mcp add --transport stdio rag-knowledge ~/.bin/rag-knowledge-mcp
-```
-
-The contents of `wrapper-example.sh` can be copied and modified
-
-```sh
-#!/usr/bin/env bash
-set -euo pipefail
-
-PROJECT_DIR="$HOME/path/to/this/project"
-UV="$(which uv)"
-
-echo "$PROJECT_DIR"
-echo "$UV"
-
-export LOG_LEVEL="${LOG_LEVEL:-INFO}"
-
-cd "$PROJECT_DIR"
-exec "$UV" run python rag_knowledge_mcp.py
 ```

@@ -25,12 +25,15 @@ if env_file.exists():
 
 
 # Helper to get config value with optional TEST_ prefix in test mode
-def _get_config(key: str, default: str) -> str:
+def _get_config(key: str, default: str, test_default: str = None) -> str:
     """
     Get configuration value with TEST_ prefix in test mode.
 
     Checks for PYTEST_CURRENT_TEST environment variable at runtime
     (not import time) to detect test mode, ensuring proper test isolation.
+
+    When running under pytest, if TEST_{key} isn't set: test_default is
+    used if given, otherwise falls back to the unprefixed key/default.
     """
     # Check test mode dynamically (pytest sets PYTEST_CURRENT_TEST during test execution)
     is_test_mode = "PYTEST_CURRENT_TEST" in os.environ
@@ -39,20 +42,9 @@ def _get_config(key: str, default: str) -> str:
         test_value = os.getenv(f"TEST_{key}")
         if test_value is not None:
             return test_value
+        if test_default is not None:
+            return test_default
     return os.getenv(key, default)
-
-
-def _require_config(key: str) -> str:
-    """
-    Get a required configuration value with no default.
-
-    Raises ValueError if the (optionally TEST_-prefixed) environment
-    variable is not set in the shell or .env.
-    """
-    value = _get_config(key, "")
-    if not value:
-        raise ValueError(f"{key} must be set (via .env or environment variable)")
-    return value
 
 
 # Helper to convert relative paths to absolute paths relative to project root
@@ -96,17 +88,21 @@ class BackendConfig(BaseModel):
     model_config = ConfigDict(frozen=True)  # Make config immutable after creation
 
     knowledge_dir: str = Field(
-        default_factory=lambda: _absolute_path(_require_config("RAG_KNOWLEDGE_DIR")),
+        default_factory=lambda: _absolute_path(
+            _get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base", "./test-knowledge-base")
+        ),
         description="Knowledge base source directory (input for ingestion)",
     )
 
     persist_dir: str = Field(
-        default_factory=lambda: _absolute_path(_get_config("RAG_PERSIST_DIR", "./chroma_db")),
+        default_factory=lambda: _absolute_path(
+            _get_config("RAG_PERSIST_DIR", "./chroma_db", "./test_chroma_db")
+        ),
         description="Vector database directory (output/storage)",
     )
 
     collection: str = Field(
-        default_factory=lambda: _get_config("RAG_COLLECTION", "knowledge_base"),
+        default_factory=lambda: _get_config("RAG_COLLECTION", "knowledge_base", "test_knowledge_base"),
         description="Collection name in the vector database",
     )
 
@@ -123,13 +119,17 @@ class BackendConfig(BaseModel):
 # ============================================================================
 
 # Knowledge base source directory (input for ingestion)
-RAG_KNOWLEDGE_DIR = _absolute_path(_require_config("RAG_KNOWLEDGE_DIR"))
+RAG_KNOWLEDGE_DIR = _absolute_path(
+    _get_config("RAG_KNOWLEDGE_DIR", "./knowledge-base", "./test-knowledge-base")
+)
 
 # Vector database directory (output of ingestion, input for queries)
-RAG_PERSIST_DIR = _absolute_path(_get_config("RAG_PERSIST_DIR", "./chroma_db"))
+RAG_PERSIST_DIR = _absolute_path(
+    _get_config("RAG_PERSIST_DIR", "./chroma_db", "./test_chroma_db")
+)
 
 # Collection name in the vector database
-RAG_COLLECTION = _get_config("RAG_COLLECTION", "knowledge_base")
+RAG_COLLECTION = _get_config("RAG_COLLECTION", "knowledge_base", "test_knowledge_base")
 
 # Sentence Transformers embedding model
 # Options: all-MiniLM-L6-v2 (fast), all-mpnet-base-v2 (quality), multi-qa-mpnet-base-dot-v1 (Q&A)
