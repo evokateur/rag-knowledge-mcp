@@ -8,6 +8,6 @@ collection: knowledge_base
 embedding_model: all-MiniLM-L6-v2
 
 # ChromaDB-specific
-chunk_size: 500
-chunk_overlap: 100
-chunk_separators: ["\n\n", "\n", ". ", " ", ""]
+chunk_size: 1000
+chunk_overlap: 200
+chunk_separators: ["\n## ", "\n### ", "\n\n", "\n", ". ", " ", ""]
