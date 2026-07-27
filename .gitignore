@@ -1,5 +1,8 @@
 .env
 .venv
+
+# Local config override (per-machine, not committed)
+settings.local.yaml
 .DS_Store
 __pycache__
 *_db

@@ -18,13 +18,12 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
-import json
 import logging
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import Field
 
-from config import BackendConfig, _get_config
+from config import BackendConfig, get_merged_config
 from abstract_backend import AbstractRagBackend
 
 logger = logging.getLogger(__name__)
@@ -38,19 +37,14 @@ class ChromaConfig(BackendConfig):
     """
 
     chunk_size: int = Field(
-        default_factory=lambda: int(_get_config("RAG_CHUNK_SIZE", "500")),
         description="Size of text chunks in characters",
     )
 
     chunk_overlap: int = Field(
-        default_factory=lambda: int(_get_config("RAG_CHUNK_OVERLAP", "100")),
         description="Overlap between chunks in characters",
     )
 
     chunk_separators: list[str] = Field(
-        default_factory=lambda: json.loads(
-            _get_config("RAG_CHUNK_SEPARATORS", '["\\n\\n", "\\n", ". ", " ", ""]')
-        ),
         description="Separators for recursive text splitting (paragraph -> sentence -> word)",
     )
 
@@ -71,7 +65,7 @@ class RagBackend(AbstractRagBackend):
 
     def _create_config(self) -> ChromaConfig:
         """Create ChromaDB-specific configuration."""
-        return ChromaConfig()
+        return ChromaConfig.model_validate(get_merged_config())
 
     async def _initialize_backend(self):
         """Initialize Chroma client and load embedding model."""

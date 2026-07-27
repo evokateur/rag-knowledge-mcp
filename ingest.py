@@ -16,7 +16,7 @@ import asyncio
 import logging
 import sys
 
-from config import RAG_KNOWLEDGE_DIR
+from config import get_merged_config
 
 # Configure logging
 logging.basicConfig(
@@ -28,10 +28,12 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Main ingestion workflow."""
+    knowledge_dir = get_merged_config()["knowledge_dir"]
+
     logger.info("=" * 60)
     logger.info("Knowledge Base Ingestion")
     logger.info("=" * 60)
-    logger.info(f"Knowledge directory: {RAG_KNOWLEDGE_DIR}")
+    logger.info(f"Knowledge directory: {knowledge_dir}")
     logger.info("=" * 60)
 
     # Import and initialize backend using factory
@@ -43,7 +45,7 @@ async def main():
         await backend.initialize()
 
         # Ingest directory using backend (always rebuilds)
-        stats = await backend.ingest_directory(directory=RAG_KNOWLEDGE_DIR)
+        stats = await backend.ingest_directory(directory=knowledge_dir)
 
         logger.info("=" * 60)
         logger.info("Ingestion Statistics:")
@@ -55,7 +57,7 @@ async def main():
 
     except FileNotFoundError as e:
         logger.error(str(e))
-        logger.error(f"\nPlease create the directory: {RAG_KNOWLEDGE_DIR}")
+        logger.error(f"\nPlease create the directory: {knowledge_dir}")
         logger.error("Add markdown files to it, then run this script again.")
         sys.exit(1)
 

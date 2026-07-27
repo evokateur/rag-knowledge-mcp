@@ -52,8 +52,9 @@ async def app_lifespan(app):
     Manage resources that persist for the server's lifetime.
 
     Initializes the RAG backend on startup and cleans up on shutdown.
-    Configuration is loaded from config.py (which reads from .env if present).
-    The backend implementation is determined by RAG_BACKEND_CLASS.
+    Configuration is loaded from config.py (which reads the layered
+    settings.yaml files). The backend implementation is determined by the
+    backend_class setting.
     """
     from config import create_rag_backend
 

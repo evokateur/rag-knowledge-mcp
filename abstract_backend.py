@@ -9,7 +9,7 @@ To create a new backend implementation:
 1. Inherit from AbstractRagBackend
 2. Override _create_config() to return your custom config (optional)
 3. Implement all abstract methods
-4. Update RAG_BACKEND_CLASS in .env to point to your implementation
+4. Set backend_class in settings.yaml to point to your implementation
 
 See chroma_backend.py for a complete working example.
 """
@@ -44,9 +44,9 @@ class AbstractRagBackend(ABC):
         Returns:
             BackendConfig or subclass: Configuration object
         """
-        from config import BackendConfig
+        from config import BackendConfig, get_merged_config
 
-        return BackendConfig()
+        return BackendConfig.model_validate(get_merged_config())
 
     async def initialize(self):
         """

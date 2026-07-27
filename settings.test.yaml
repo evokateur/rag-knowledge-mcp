@@ -1,0 +1,4 @@
+# Test overrides, auto-merged over settings.yaml when running under pytest.
+knowledge_dir: ./test-knowledge-base
+persist_dir: ./test_chroma_db
+collection: test_knowledge_base

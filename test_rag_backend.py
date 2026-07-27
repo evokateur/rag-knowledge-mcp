@@ -3,21 +3,15 @@
 Test RAG Backend Implementation
 
 Tests the complete backend functionality including read and write operations.
-Uses TEST_* environment variables from .env for test database configuration.
+Test isolation comes from settings.test.yaml, auto-merged under pytest.
 """
 
 import shutil
 import pytest
 from datetime import datetime
 from pathlib import Path
-from dotenv import load_dotenv
 
 from config import create_rag_backend
-
-# Load test environment variables
-env_file = Path(__file__).parent / ".env"
-if env_file.exists():
-    load_dotenv(env_file, override=True)
 
 
 # ============================================================================

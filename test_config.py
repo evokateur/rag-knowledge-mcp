@@ -1,156 +1,158 @@
 #!/usr/bin/env python3
-"""Test configuration loading from environment variables."""
+"""Test layered YAML configuration loading."""
 
-import pytest
+import textwrap
+from pathlib import Path
 
-from config import BackendConfig, _get_config, PROJECT_ROOT
+from config import (
+    BackendConfig,
+    PROJECT_ROOT,
+    _absolute_path,
+    _build_merged,
+    deep_merge,
+)
 from chroma_backend import ChromaConfig
 
 
+DEFAULTS_YAML = textwrap.dedent(
+    """
+    backend_class: chroma_backend.RagBackend
+    knowledge_dir: ./knowledge-base
+    persist_dir: ./chroma_db
+    collection: knowledge_base
+    embedding_model: all-MiniLM-L6-v2
+    chunk_size: 500
+    chunk_overlap: 100
+    chunk_separators: ["\\n\\n", "\\n", ". ", " ", ""]
+    """
+)
+
+TEST_YAML = textwrap.dedent(
+    """
+    knowledge_dir: ./test-knowledge-base
+    persist_dir: ./test_chroma_db
+    collection: test_knowledge_base
+    """
+)
+
+
+def _write(path: Path, content: str) -> None:
+    path.write_text(content)
+
+
 # ============================================================================
-# Default values (when no environment variables are set)
-# ============================================================================
-
-BACKEND_DEFAULTS = {
-    "knowledge_dir": str((PROJECT_ROOT / "knowledge-base").absolute()),
-    "persist_dir": str((PROJECT_ROOT / "chroma_db").absolute()),
-    "collection": "knowledge_base",
-    "embedding_model": "all-MiniLM-L6-v2",
-}
-
-CHROMA_DEFAULTS = {
-    **BACKEND_DEFAULTS,
-    "chunk_size": 500,
-    "chunk_overlap": 100,
-    "chunk_separators": ["\n\n", "\n", ". ", " ", ""],
-}
-
-
-# ============================================================================
-# _get_config
+# deep_merge
 # ============================================================================
 
 
-def test_get_config_returns_default(monkeypatch):
-    """_get_config returns the default when the env var is unset."""
-    monkeypatch.delenv("RAG_COLLECTION", raising=False)
-    monkeypatch.delenv("TEST_RAG_COLLECTION", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-
-    assert _get_config("RAG_COLLECTION", "knowledge_base") == "knowledge_base"
+def test_deep_merge_overrides_scalars():
+    base = {"a": 1, "b": 2}
+    deep_merge(base, {"b": 3})
+    assert base == {"a": 1, "b": 3}
 
 
-def test_get_config_reads_env_var(monkeypatch):
-    """_get_config returns the env var value when set."""
-    monkeypatch.setenv("RAG_COLLECTION", "custom_collection")
-    monkeypatch.delenv("TEST_RAG_COLLECTION", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-
-    assert _get_config("RAG_COLLECTION", "knowledge_base") == "custom_collection"
+def test_deep_merge_is_recursive():
+    base = {"nested": {"a": 1, "b": 2}}
+    deep_merge(base, {"nested": {"b": 3, "c": 4}})
+    assert base == {"nested": {"a": 1, "b": 3, "c": 4}}
 
 
-def test_get_config_prefers_test_prefix_in_test_mode(monkeypatch):
-    """_get_config prefers TEST_ prefixed var when running under pytest."""
-    monkeypatch.setenv("RAG_COLLECTION", "production")
-    monkeypatch.setenv("TEST_RAG_COLLECTION", "test_collection")
-    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_config.py::test_example")
-
-    assert _get_config("RAG_COLLECTION", "knowledge_base") == "test_collection"
+# ============================================================================
+# _absolute_path
+# ============================================================================
 
 
-def test_get_config_falls_back_to_unprefixed_in_test_mode(monkeypatch):
-    """_get_config falls back to unprefixed var when TEST_ is not set and no test_default is given."""
-    monkeypatch.setenv("RAG_COLLECTION", "production")
-    monkeypatch.delenv("TEST_RAG_COLLECTION", raising=False)
-    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_config.py::test_example")
-
-    assert _get_config("RAG_COLLECTION", "knowledge_base") == "production"
+def test_absolute_path_resolves_relative_from_project_root():
+    assert _absolute_path("./chroma_db") == str((PROJECT_ROOT / "chroma_db").absolute())
 
 
-def test_get_config_uses_test_default_instead_of_production_value(monkeypatch):
-    """_get_config uses test_default, not the production value, when TEST_ is unset."""
-    monkeypatch.setenv("RAG_COLLECTION", "production")
-    monkeypatch.delenv("TEST_RAG_COLLECTION", raising=False)
-    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_config.py::test_example")
+def test_absolute_path_expands_tilde():
+    assert _absolute_path("~/db") == str((Path.home() / "db").absolute())
 
-    assert (
-        _get_config("RAG_COLLECTION", "knowledge_base", "test_collection")
-        == "test_collection"
+
+def test_absolute_path_leaves_absolute_unchanged():
+    assert _absolute_path("/tmp/db") == "/tmp/db"
+
+
+# ============================================================================
+# _build_merged layering
+# ============================================================================
+
+
+def test_defaults_only(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+
+    merged = _build_merged(project_root=tmp_path, under_test=False)
+
+    assert merged["collection"] == "knowledge_base"
+    assert merged["backend_class"] == "chroma_backend.RagBackend"
+    # relative paths resolve against the real project root, not the yaml location
+    assert merged["knowledge_dir"] == str((PROJECT_ROOT / "knowledge-base").absolute())
+
+
+def test_user_then_local_override(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+    user_file = tmp_path / "user.yaml"
+    _write(user_file, "collection: from_user\nembedding_model: from_user\n")
+    _write(tmp_path / "settings.local.yaml", "collection: from_local\n")
+
+    merged = _build_merged(
+        project_root=tmp_path, user_config_file=user_file, under_test=False
     )
 
-
-# ============================================================================
-# BackendConfig defaults
-# ============================================================================
-
-
-def test_backend_config_defaults(monkeypatch):
-    """BackendConfig fields match expected defaults when no env vars are set."""
-    for key in ["RAG_KNOWLEDGE_DIR", "RAG_PERSIST_DIR", "RAG_COLLECTION", "RAG_EMBEDDING_MODEL"]:
-        monkeypatch.delenv(key, raising=False)
-        monkeypatch.delenv(f"TEST_{key}", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-
-    config = BackendConfig()
-
-    assert config.knowledge_dir == BACKEND_DEFAULTS["knowledge_dir"]
-    assert config.persist_dir == BACKEND_DEFAULTS["persist_dir"]
-    assert config.collection == BACKEND_DEFAULTS["collection"]
-    assert config.embedding_model == BACKEND_DEFAULTS["embedding_model"]
+    # local wins over user, user wins over defaults
+    assert merged["collection"] == "from_local"
+    assert merged["embedding_model"] == "from_user"
 
 
-def test_backend_config_from_env(monkeypatch):
-    """BackendConfig fields are overridden by environment variables."""
-    monkeypatch.setenv("RAG_COLLECTION", "custom_collection")
-    monkeypatch.setenv("RAG_EMBEDDING_MODEL", "all-mpnet-base-v2")
-    monkeypatch.delenv("TEST_RAG_COLLECTION", raising=False)
-    monkeypatch.delenv("TEST_RAG_EMBEDDING_MODEL", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+def test_under_test_merges_test_layer_and_ignores_user_local(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+    _write(tmp_path / "settings.test.yaml", TEST_YAML)
+    user_file = tmp_path / "user.yaml"
+    _write(user_file, "collection: from_user\n")
+    _write(tmp_path / "settings.local.yaml", "collection: from_local\n")
 
-    config = BackendConfig()
+    merged = _build_merged(
+        project_root=tmp_path, user_config_file=user_file, under_test=True
+    )
 
-    assert config.collection == "custom_collection"
-    assert config.embedding_model == "all-mpnet-base-v2"
+    # test layer wins; user/local are not consulted in test mode
+    assert merged["collection"] == "test_knowledge_base"
+    assert merged["persist_dir"] == str((PROJECT_ROOT / "test_chroma_db").absolute())
+
+
+def test_paths_resolved_to_absolute(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+
+    merged = _build_merged(project_root=tmp_path, under_test=False)
+
+    assert Path(merged["knowledge_dir"]).is_absolute()
+    assert Path(merged["persist_dir"]).is_absolute()
 
 
 # ============================================================================
-# ChromaConfig defaults (includes chunking strategy)
+# Pydantic models validate the merged dict
 # ============================================================================
 
 
-def test_chroma_config_defaults(monkeypatch):
-    """ChromaConfig fields match expected defaults when no env vars are set."""
-    all_keys = [
-        "RAG_KNOWLEDGE_DIR", "RAG_PERSIST_DIR", "RAG_COLLECTION",
-        "RAG_EMBEDDING_MODEL", "RAG_CHUNK_SIZE", "RAG_CHUNK_OVERLAP",
-        "RAG_CHUNK_SEPARATORS",
-    ]
-    for key in all_keys:
-        monkeypatch.delenv(key, raising=False)
-        monkeypatch.delenv(f"TEST_{key}", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+def test_backend_config_from_merged(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+    merged = _build_merged(project_root=tmp_path, under_test=False)
 
-    config = ChromaConfig()
+    config = BackendConfig.model_validate(merged)
 
-    assert config.chunk_size == CHROMA_DEFAULTS["chunk_size"]
-    assert config.chunk_overlap == CHROMA_DEFAULTS["chunk_overlap"]
-    assert config.chunk_separators == CHROMA_DEFAULTS["chunk_separators"]
-    # Inherited base fields still work
-    assert config.collection == CHROMA_DEFAULTS["collection"]
+    assert config.collection == "knowledge_base"
+    assert config.embedding_model == "all-MiniLM-L6-v2"
 
 
-def test_chroma_config_from_env(monkeypatch):
-    """ChromaConfig chunking fields are overridden by environment variables."""
-    monkeypatch.setenv("RAG_CHUNK_SIZE", "1000")
-    monkeypatch.setenv("RAG_CHUNK_OVERLAP", "200")
-    monkeypatch.setenv("RAG_CHUNK_SEPARATORS", '["\\n\\n", " "]')
-    monkeypatch.delenv("TEST_RAG_CHUNK_SIZE", raising=False)
-    monkeypatch.delenv("TEST_RAG_CHUNK_OVERLAP", raising=False)
-    monkeypatch.delenv("TEST_RAG_CHUNK_SEPARATORS", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+def test_chroma_config_from_merged(tmp_path):
+    _write(tmp_path / "settings.yaml", DEFAULTS_YAML)
+    merged = _build_merged(project_root=tmp_path, under_test=False)
 
-    config = ChromaConfig()
+    config = ChromaConfig.model_validate(merged)
 
-    assert config.chunk_size == 1000
-    assert config.chunk_overlap == 200
-    assert config.chunk_separators == ["\n\n", " "]
+    assert config.chunk_size == 500
+    assert config.chunk_overlap == 100
+    assert config.chunk_separators == ["\n\n", "\n", ". ", " ", ""]
+    # inherited base field still present
+    assert config.collection == "knowledge_base"

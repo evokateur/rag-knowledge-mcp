@@ -1,0 +1,13 @@
+# Default configuration. Override in ~/.rag-knowledge-mcp/settings.yaml (user)
+# or settings.local.yaml (local, gitignored). Merge order: this -> user -> local.
+backend_class: chroma_backend.RagBackend
+
+knowledge_dir: ./knowledge-base
+persist_dir: ./chroma_db
+collection: knowledge_base
+embedding_model: all-MiniLM-L6-v2
+
+# ChromaDB-specific
+chunk_size: 500
+chunk_overlap: 100
+chunk_separators: ["\n\n", "\n", ". ", " ", ""]

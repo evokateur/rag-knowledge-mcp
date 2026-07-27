@@ -10,7 +10,19 @@ With `pytest` tests:
 uv sync --extra dev
 ```
 
-Refer to `.env.example` for defaults to override in `.env` (optional).
+### Configuration
+
+Defaults live in the committed `settings.yaml`. Override them (all optional,
+merged in order, later wins):
+
+```
+settings.yaml                       committed defaults
+~/.rag-knowledge-mcp/settings.yaml  per-user override
+settings.local.yaml                 per-machine override (gitignored)
+```
+
+Under `pytest`, `settings.test.yaml` is merged over the defaults instead, so
+tests run against an isolated database.
 
 ### Ingesting Documents
 
